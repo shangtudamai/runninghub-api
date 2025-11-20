@@ -72,9 +72,11 @@ app.post('/api/restore', async (req, res) => {
     console.log('📤 步骤1: 上传图片到RunningHub...');
     const fileName = await client.uploadImage(image);
     console.log(`✅ 图片上传成功! 文件名: ${fileName}`);
+    console.log(`📋 文件名类型: ${typeof fileName}, 内容: ${JSON.stringify(fileName)}`);
 
     // 步骤2: 使用文件名运行工作流
     console.log('🎨 步骤2: 运行工作流...');
+    console.log(`📝 传递参数: nodeId=${NODE_ID}, fieldName=${config.fieldName}, fieldValue=${fileName}`);
     const result = await client.runWorkflow({
       nodeInfoList: [
         {
