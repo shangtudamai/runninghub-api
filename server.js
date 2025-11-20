@@ -89,6 +89,7 @@ app.post('/api/restore', async (req, res) => {
     console.log('📝 任务ID:', result.taskId);
     console.log('🖼️ 输出URL:', result.fileUrl);
     console.log('💰 消费:', result.consumeMoney, '元');
+    console.log('📋 完整结果:', JSON.stringify(result.results, null, 2));
 
     // 返回给前端的数据格式（与原API保持一致）
     res.json({
