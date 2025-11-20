@@ -20,12 +20,12 @@ const WORKFLOW_CONFIG = {
   light: {
     workflowId: process.env.WORKFLOW_ID_LIGHT || process.env.WORKFLOW_ID,
     nodeId: process.env.NODE_ID_LIGHT || process.env.NODE_ID || "2",
-    fieldName: "加载图像"
+    fieldName: "Load Image"
   },
   severe: {
     workflowId: process.env.WORKFLOW_ID_SEVERE,
     nodeId: process.env.NODE_ID_LOAD_SEVERE || "12",
-    fieldName: "加载图像"
+    fieldName: "Load Image"
   }
 };
 
