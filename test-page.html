@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RunningHub API 测试页面</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50">
+  <div class="min-h-screen flex flex-col items-center justify-center p-6 text-center">
+    <h1 class="text-2xl font-semibold mb-2">AI 老照片修复体验站（RunningHub版）</h1>
+    <p class="text-gray-600 mb-2">上传一张老照片，AI 将帮你修复它。</p>
+
+    <!-- 账户余额显示 -->
+    <div id="balance" class="mb-4 text-sm text-gray-500 bg-white px-4 py-2 rounded-lg shadow-sm hidden"></div>
+
+    <!-- 上传区域 -->
+    <div
+      id="uploadArea"
+      class="border-2 border-dashed border-gray-300 rounded-xl p-8 bg-white w-full max-w-md cursor-pointer hover:border-blue-400"
+    >
+      <input
+        type="file"
+        id="fileInput"
+        accept="image/*"
+        class="hidden"
+      />
+      <div id="previewContainer">
+        <p class="text-gray-400">点击上传图片</p>
+      </div>
+    </div>
+
+    <!-- 修复按钮 -->
+    <button
+      id="restoreBtn"
+      disabled
+      class="mt-6 px-6 py-3 rounded-lg text-white text-lg bg-gray-400 cursor-not-allowed"
+    >
+      选择图片后开始
+    </button>
+
+    <!-- 错误信息 -->
+    <p id="errorMsg" class="text-red-500 mt-4 hidden"></p>
+
+    <!-- 修复后图片 -->
+    <div id="resultContainer" class="mt-8 hidden">
+      <h2 class="text-xl font-medium mb-3">✅ 修复完成</h2>
+      <img id="resultImage" class="rounded-lg shadow-md max-h-80 mx-auto" />
+
+      <!-- 任务信息 -->
+      <div id="taskInfo" class="mt-4 text-sm text-gray-600 bg-white px-4 py-2 rounded-lg inline-block"></div>
+
+      <!-- 下载按钮 -->
+      <div class="mt-4">
+        <a
+          id="downloadBtn"
+          href="#"
+          download="restored-photo.png"
+          target="_blank"
+          class="inline-block px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+        >
+          下载修复后的图片
+        </a>
+      </div>
+    </div>
+
+    <!-- 调试信息 -->
+    <div id="debugInfo" class="mt-10 bg-gray-100 text-left p-4 rounded-lg w-full max-w-2xl overflow-auto text-sm hidden">
+      <h3 class="text-lg font-semibold mb-2 text-gray-700">🔍 调试信息（RunningHub 原始返回）</h3>
+      <pre id="debugContent" class="whitespace-pre-wrap break-words text-gray-800"></pre>
+    </div>
+  </div>
+
+  <script>
+    const API_URL = "http://localhost:3001/api/restore";
+    const BALANCE_URL = "http://localhost:3001/api/balance";
+
+    let selectedFile = null;
+
+    // 加载余额
+    async function loadBalance() {
+      try {
+        const response = await fetch(BALANCE_URL);
+        const data = await response.json();
+        if (data.success) {
+          const balanceEl = document.getElementById('balance');
+          balanceEl.innerHTML = `💰 余额: ${data.data.remainCoins} RH币 + ${data.data.remainMoney} ${data.data.currency} | 📊 API: ${data.data.apiType}`;
+          balanceEl.classList.remove('hidden');
+        }
+      } catch (error) {
+        console.error('获取余额失败:', error);
+      }
+    }
+
+    // 文件选择
+    document.getElementById('uploadArea').addEventListener('click', () => {
+      document.getElementById('fileInput').click();
+    });
+
+    document.getElementById('fileInput').addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      selectedFile = file;
+
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        document.getElementById('previewContainer').innerHTML =
+          `<img src="${ev.target.result}" alt="预览图" class="rounded-lg max-h-64 mx-auto" />`;
+
+        const btn = document.getElementById('restoreBtn');
+        btn.disabled = false;
+        btn.className = "mt-6 px-6 py-3 rounded-lg text-white text-lg bg-blue-600 hover:bg-blue-700";
+        btn.textContent = "开始修复";
+      };
+      reader.readAsDataURL(file);
+    });
+
+    // 修复按钮
+    document.getElementById('restoreBtn').addEventListener('click', async () => {
+      if (!selectedFile) return;
+
+      const btn = document.getElementById('restoreBtn');
+      btn.disabled = true;
+      btn.className = "mt-6 px-6 py-3 rounded-lg text-white text-lg bg-gray-400 cursor-not-allowed";
+      btn.textContent = "🪄 正在修复中...";
+
+      document.getElementById('errorMsg').classList.add('hidden');
+      document.getElementById('resultContainer').classList.add('hidden');
+
+      try {
+        // 转换为 Base64
+        const reader = new FileReader();
+        const base64Data = await new Promise((resolve) => {
+          reader.onloadend = () => resolve(reader.result.split(',')[1]);
+          reader.readAsDataURL(selectedFile);
+        });
+
+        console.log('📤 正在上传至 API...');
+
+        // 调用API
+        const response = await fetch(API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ image: base64Data })
+        });
+
+        const data = await response.json();
+        console.log('📩 API 返回：', data);
+
+        if (!response.ok) throw new Error(data.error || '服务器错误');
+
+        if (data.output_url) {
+          // 显示结果
+          document.getElementById('resultImage').src = data.output_url;
+          document.getElementById('downloadBtn').href = data.output_url;
+
+          document.getElementById('taskInfo').innerHTML =
+            `<span class="mr-3">📝 任务ID: ${data.taskId}</span>` +
+            `<span class="mr-3">💰 消费: ${data.consumeMoney}元</span>` +
+            `<span>⏱️ 耗时: ${data.taskCostTime}秒</span>`;
+
+          document.getElementById('resultContainer').classList.remove('hidden');
+
+          // 刷新余额
+          loadBalance();
+
+          // 显示调试信息
+          if (data.debug_raw) {
+            document.getElementById('debugContent').textContent = JSON.stringify(data.debug_raw, null, 2);
+            document.getElementById('debugInfo').classList.remove('hidden');
+          }
+        } else {
+          throw new Error('修复成功，但未返回图片链接');
+        }
+
+        btn.textContent = "修复完成";
+      } catch (error) {
+        console.error('❌ 出错：', error);
+        const errorEl = document.getElementById('errorMsg');
+        errorEl.textContent = error.message || '修复失败，请稍后重试';
+        errorEl.classList.remove('hidden');
+
+        btn.disabled = false;
+        btn.className = "mt-6 px-6 py-3 rounded-lg text-white text-lg bg-blue-600 hover:bg-blue-700";
+        btn.textContent = "重试";
+      }
+    });
+
+    // 初始化
+    loadBalance();
+  </script>
+</body>
+</html>

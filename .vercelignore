@@ -1,0 +1,11 @@
+node_modules
+.env
+.env.local
+*.log
+test_*.js
+test-*.js
+test-page.html
+server.js
+find-node-config.js
+get-workflow-info.js
+smart-find-node.js
